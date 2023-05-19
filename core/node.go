@@ -60,18 +60,19 @@ func NewMaelstromNode() *Node {
 }
 
 func (n *Node) Reply(req Message, body any) error {
+	b := make(map[string]any)
+
 	var reqBody MessageBody
 	if err := json.Unmarshal(req.Body, &reqBody); err != nil {
 		return err
 	}
 
-	b := make(map[string]any)
-
 	if buf, err := json.Marshal(body); err != nil {
-		return err
+		return fmt.Errorf("marshal json error: %v", err)
 	} else if err := json.Unmarshal(buf, &b); err != nil {
-		return err
+		return fmt.Errorf("marshal json error: %v", err)
 	}
+
 	b["in_reply_to"] = reqBody.MessageID
 
 	return n.Send(req.Src, b)
@@ -79,7 +80,7 @@ func (n *Node) Reply(req Message, body any) error {
 
 func (n *Node) Handle(typ string, fn HandlerFunc) {
 	if _, ok := n.handlers[typ]; ok {
-		log.Fatalf("dupilicate mesage handler for %q message type", typ)
+		log.Fatalf("duplicate message handler for %q message type", typ)
 	}
 	n.handlers[typ] = fn
 }
@@ -145,36 +146,37 @@ func (n *Node) Run() error {
 
 		log.Printf("received: %v", string(msg.Body))
 
-		if body.InReplyTo != 0 {
-			n.mu.Lock()
-			h := n.callbacks[body.InReplyTo]
-			delete(n.callbacks, body.InReplyTo)
-			n.mu.Unlock()
+		// if body.InReplyTo != 0 {
+		// 	n.mu.Lock()
+		// 	h := n.callbacks[body.InReplyTo]
+		// 	delete(n.callbacks, body.InReplyTo)
+		// 	n.mu.Unlock()
 
-			if h == nil {
-				log.Printf("ignoring reply to %d with no callback ", body.InReplyTo)
-				continue
-			}
+		// 	if h == nil {
+		// 		log.Printf("ignoring reply to %d with no callback ", body.InReplyTo)
+		// 		continue
+		// 	}
 
-			n.wg.Add(1)
-			go func() {
-				defer n.wg.Done()
-				n.HandleCallback(h, msg)
-			}()
-			continue
-		}
+		// 	n.wg.Add(1)
+		// 	go func() {
+		// 		defer n.wg.Done()
+		// 		n.HandleCallback(h, msg)
+		// 	}()
+		// 	continue
+		// }
 
-		var h HandlerFunc
 		if body.Type == "init" {
-			h = n.HandleInitMessage
-		} else if h = n.handlers[body.Type]; h == nil {
+			n.HandleInitMessage(msg)
+		} else if n.handlers[body.Type] == nil {
 			return fmt.Errorf("No handler for %s", line)
 		}
 
 		n.wg.Add(1)
 		go func() {
 			defer n.wg.Done()
-			h(msg)
+			if n.handlers[body.Type] != nil {
+				n.handlers[body.Type](msg)
+			}
 		}()
 	}
 	if err := scanner.Err(); err != nil {
