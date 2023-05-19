@@ -54,8 +54,7 @@ func NewMaelstromNode() *Node {
 		handlers:  make(map[string]HandlerFunc),
 		callbacks: make(map[int]HandlerFunc),
 
-		
-		:  os.Stdin,
+		Stdin:  os.Stdin,
 		Stdout: os.Stdout,
 	}
 }
