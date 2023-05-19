@@ -36,7 +36,7 @@ type InitMessageBody struct {
 type Node struct {
 	// For Reading messages from Maelstrom
 	Stdin io.Reader
-	// For Writing messages from Maelstrom
+	// For Writing messages to Maelstrom
 	Stdout io.Writer
 	mu     sync.Mutex
 	wg     sync.WaitGroup
@@ -54,7 +54,8 @@ func NewMaelstromNode() *Node {
 		handlers:  make(map[string]HandlerFunc),
 		callbacks: make(map[int]HandlerFunc),
 
-		Stdin:  os.Stdin,
+		
+		:  os.Stdin,
 		Stdout: os.Stdout,
 	}
 }
